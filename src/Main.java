@@ -1,6 +1,7 @@
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 
 import static java.lang.Math.max;
 import static java.lang.Math.min;
@@ -44,7 +45,13 @@ public class Main{
             return initiative;
         }
         public void setStatus(Status status){
-            this.statuses.add(status);
+            if(!statuses.contains(status)){
+                this.statuses.add(status);
+            } else {
+                statuses.get(statuses.indexOf(status)).add(status);
+
+            }
+
         }
         public List<Status> getStatuses(){
             return statuses;
@@ -68,7 +75,7 @@ public class Main{
             return name;
         }
         public void printStats(){
-            System.out.printf("%s %s:\nHealth:%d", type,  name, health);
+            System.out.printf("%s %s:\nHealth: %d, Def: %s", type,  name, health, defenseR);
         }
         public String getType(){
             return type;
@@ -76,28 +83,52 @@ public class Main{
         public void setType(String type){
             this.type = type;
         }
-
+        public HashMap<String, Integer> getResists(){
+            return resists;
+        }
+        public void setResists(HashMap<String, Integer> resists){
+            this.resists = resists;
+        }
     }
     public static class Status extends Entity{
+        private int duration;
+        public void setDuration(int duration){
+            this.duration = duration;
+        }
+        public int getDuration(){
+            return duration;
+        }
+        public void tickDuration(){
+            duration--;
+        }
         public int tick(){
             return -1;
         }
         public int getVal(){
             return 0;
         }
+        public void add(Status status) {
+        }
+        @Override
+        public boolean equals(Object obj){
+            if(obj instanceof Status){
+                if(Objects.equals(((Status) obj).getName(), this.getName())){
+                    return true;
+                }
+            }
+            return false;
+        }
     }
     public static class Block extends Status{
-        private int duration;
         private int ddef;
-
         Block(int duration, int ddef){
-            this.duration = duration;
+            setDuration(duration);
             this.ddef = ddef;
             this.setName("block");
         }
         public int tick(){
-            if(duration>=1){
-                duration -= 1;
+            if(getDuration()>=1){
+                tickDuration();
                 return ddef;
             } else {
                 return -1;
@@ -106,13 +137,42 @@ public class Main{
         public int getVal(){
             return ddef;
         }
+        @Override
+        public void add(Status block2){
+            this.ddef += ((Block)block2).ddef;
+            this.setDuration(this.getDuration()+1);
+        }
+    }
+    public static class Poison extends Status{
+        private int poison;
+        Poison(int duration, int poison){
+            setDuration(duration);
+            this.poison = poison;
+            this.setName("poison");
+        }
+        public int tick(){
+            if(poison>=1){
+                poison--;
+                return poison;
+            }
+            return -1;
+        }
+        public int getVal(){
+            return poison;
+        }
+        @Override
+        public void add(Status poison2){
+            poison+=((Poison) poison2).poison*2/3;
+        }
     }
     public static class Hero extends Entity{
         public void attack(Entity target){
             target.setHealth(target.getHealth()-max(this.getAttackR()-target.getDefenseR(), 0));
         }
         public void block(){
-            this.setStatus(new Block(3, 5));
+            int n = 5;
+            this.setStatus(new Block(3-1, n));
+            setDefenseR(getDefenseR()+n);
         }
         public void triggerStatuses(){
             setDefenseR(getDefense());
@@ -126,6 +186,10 @@ public class Main{
                 switch (s.getName()){
                     case "block":
                         setDefenseR(getDefenseR()+t);
+                        break;
+                    case "poison":
+                        setHealth(getHealth()-max(t-getResists().get("poison"), 0));
+                        break;
                 }
             }
         }
@@ -135,6 +199,8 @@ public class Main{
     }
     public static class Archer extends Hero{
         Archer(String name){
+            this.setResists(new HashMap<>());
+            this.getResists().put("poison", 1);
             this.setHealth(90);
             this.setAttack(20);
             this.setDefense(0);
@@ -142,7 +208,9 @@ public class Main{
             this.setName(name);
             this.setType("Archer");
         }
-
+        public void poisonAttack(Entity target){
+            target.setStatus(new Poison(5, 8+1));
+        }
     }
 
 
@@ -150,11 +218,13 @@ public class Main{
     public static void main(String[] args){
         Archer ar1 = new Archer("1");
         Archer ar2 = new Archer("2");
-        ar1.startTurn();
         ar2.startTurn();
         ar2.block();
+        ar1.startTurn();
+        ar1.poisonAttack(ar2);
+        ar1.poisonAttack(ar2);
         ar2.startTurn();
-        ar1.attack(ar2);
+        ar2.startTurn();
         ar2.printStats();
     }
 }
