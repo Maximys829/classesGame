@@ -1,10 +1,6 @@
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
-import static java.lang.Math.max;
-import static java.lang.Math.min;
+import static java.lang.Math.*;
 
 
 public class Main{
@@ -12,19 +8,39 @@ public class Main{
     public static class Entity{
         private String name;
         private String type;
-        private int health = 10;
+        private int maxHealth = 10;
+        private int curHealth = maxHealth;
         private int attack = 0;
         private int attackR = 0;
         private int defense = 0;
         private int defenseR = 0;
         private int initiative = 0;
         private List<Status> statuses = new ArrayList() {};
-        private HashMap<String, Integer> resists = new HashMap<>();
-        public void setHealth(int health){
-            this.health = health;
+        private HashMap<String, Double> resists = new HashMap<>();
+        public void setMaxHealth(int maxHealth){
+            this.maxHealth = maxHealth;
         }
-        public int getHealth(){
-            return health;
+        public void setMaxHealthAndHeal(int maxHealth){
+            this.maxHealth = maxHealth;
+            this.curHealth = maxHealth;
+        }
+        public int getMaxHealth(){
+            return maxHealth;
+        }
+        public void decreaseHealth(int amount){
+            curHealth -= amount;
+            if(curHealth <= 0){
+                curHealth = 0;
+            }
+        }
+        public void increaseHealth(int amount){
+            curHealth += amount;
+            if(curHealth > maxHealth){
+                curHealth = maxHealth;
+            }
+        }
+        public int getCurHealth(){
+            return curHealth;
         }
         public void setAttack(int attack){
             this.attack = attack;
@@ -75,7 +91,7 @@ public class Main{
             return name;
         }
         public void printStats(){
-            System.out.printf("%s %s:\nHealth: %d, Def: %s", type,  name, health, defenseR);
+            System.out.printf("%s %s:\nHealth: %d/%d, Def: %s\n", type,  name, curHealth,maxHealth, defenseR);
         }
         public String getType(){
             return type;
@@ -83,11 +99,15 @@ public class Main{
         public void setType(String type){
             this.type = type;
         }
-        public HashMap<String, Integer> getResists(){
+        public HashMap<String, Double> getResists(){
             return resists;
         }
-        public void setResists(HashMap<String, Integer> resists){
+        public void setResists(HashMap<String, Double> resists){
             this.resists = resists;
+        }
+        public void fillResists(List<Double> resists){
+            this.resists.put("poison", resists.get(0));
+
         }
     }
     public static class Status extends Entity{
@@ -145,8 +165,7 @@ public class Main{
     }
     public static class Poison extends Status{
         private int poison;
-        Poison(int duration, int poison){
-            setDuration(duration);
+        Poison(int poison){
             this.poison = poison;
             this.setName("poison");
         }
@@ -165,9 +184,24 @@ public class Main{
             poison+=((Poison) poison2).poison*2/3;
         }
     }
+    public static class Stun extends Status{
+        Stun(int duration){
+            setDuration(duration);
+            this.setName("stun");
+        }
+        public int tick(){
+            if(getDuration()>=1){
+                tickDuration();
+                return 1;
+            }
+            return -1;
+        }
+    }
     public static class Hero extends Entity{
+        HashMap<String, Double> resists = new HashMap<String, Double>();
+        private int actionCnt = 1;
         public void attack(Entity target){
-            target.setHealth(target.getHealth()-max(this.getAttackR()-target.getDefenseR(), 0));
+            target.decreaseHealth(max(this.getAttackR()-target.getDefenseR(), 0));
         }
         public void block(){
             int n = 5;
@@ -175,8 +209,6 @@ public class Main{
             setDefenseR(getDefenseR()+n);
         }
         public void triggerStatuses(){
-            setDefenseR(getDefense());
-            setAttackR(getAttack());
             for(Status s : this.getStatuses()){
                 int t = s.tick();
                 if(t==-1){
@@ -188,20 +220,25 @@ public class Main{
                         setDefenseR(getDefenseR()+t);
                         break;
                     case "poison":
-                        setHealth(getHealth()-max(t-getResists().get("poison"), 0));
+                        decreaseHealth((int) round(max(t*getResists().get("poison"), 0)));
+                        break;
+                    case "stun":
+                        this.actionCnt = 0;
                         break;
                 }
             }
         }
         public void startTurn(){
+            setDefenseR(getDefense());
+            setAttackR(getAttack());
             this.triggerStatuses();
         }
     }
     public static class Archer extends Hero{
         Archer(String name){
-            this.setResists(new HashMap<>());
-            this.getResists().put("poison", 1);
-            this.setHealth(90);
+            List<Double> list = List.of(0.8, 1.);
+            this.fillResists(list);
+            this.setMaxHealthAndHeal(90);
             this.setAttack(20);
             this.setDefense(0);
             this.setInitiative(5);
@@ -209,22 +246,81 @@ public class Main{
             this.setType("Archer");
         }
         public void poisonAttack(Entity target){
-            target.setStatus(new Poison(5, 8+1));
+            target.setStatus(new Poison(8+1));
+        }
+    }
+    public static class Cleric extends Hero{
+        private int healAmount;
+        Cleric(String name){
+            this.healAmount = 10;
+            List<Double> list = List.of(1., 1.);
+            this.fillResists(list);
+            this.setMaxHealthAndHeal(100);
+            this.setAttack(15);
+            this.setDefense(0);
+            this.setInitiative(0);
+            this.setName(name);
+            this.setType("Cleric");
+        }
+        public void heal(Entity target){
+            target.setMaxHealthAndHeal(target.getMaxHealth()+healAmount);
+        }
+    }
+    public static class Fighter extends Hero{
+        Fighter(String name){
+            List<Double> list = List.of(0.9, 1.);
+            this.fillResists(list);
+            this.setMaxHealthAndHeal(120);
+            this.setAttack(25);
+            this.setDefense(5);
+            this.setInitiative(3);
+            this.setName(name);
+            this.setType("Fighter");
+        }
+
+        @Override
+        public void block() {
+            int n = 10;
+            this.setStatus(new Block(3-1, n));
+            setDefenseR(getDefenseR()+n);
+        }
+        public void stun(Entity target){
+            target.setStatus(new Stun(1));
+        }
+    }
+    public static class Wizard extends Hero {
+        Wizard(String name) {
+            List<Double> list = List.of(1.2, 1.);
+            this.fillResists(list);
+            this.setMaxHealthAndHeal(80);
+            this.setAttack(15);
+            this.setDefense(0);
+            this.setInitiative(-3);
+            this.setName(name);
+            this.setType("Wizard");
+        }
+        public void magicMissile(Entity target){
+            target.decreaseHealth(18);//ignores def
         }
     }
 
 
 
-    public static void main(String[] args){
+        public static void main(String[] args){
         Archer ar1 = new Archer("1");
         Archer ar2 = new Archer("2");
+        Wizard w1 = new Wizard("1");
+        Fighter f1 = new Fighter("1");
         ar2.startTurn();
         ar2.block();
         ar1.startTurn();
         ar1.poisonAttack(ar2);
         ar1.poisonAttack(ar2);
         ar2.startTurn();
-        ar2.startTurn();
+        //ar2.startTurn();
         ar2.printStats();
+        f1.block();
+        w1.magicMissile(f1);
+        f1.printStats();
     }
 }
