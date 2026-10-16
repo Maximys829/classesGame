@@ -327,7 +327,7 @@ public class Main {
         }
 
         public void heal(Entity target) {
-            target.setMaxHealthAndHeal(target.getMaxHealth() + healAmount);
+            target.increaseHealth(healAmount);
         }
     }
 
