@@ -1,12 +1,25 @@
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.*;
 
 import static java.lang.Math.*;
 
 
 public class Main {
-
-    public static class Entity {
+    public static class Obj{
         private String name;
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
+        }
+    }
+    public static class Entity extends Obj{
+
         private String type;
         private int maxHealth = 10;
         private int curHealth = maxHealth;
@@ -104,16 +117,10 @@ public class Main {
             return attackR;
         }
 
-        public void setName(String name) {
-            this.name = name;
-        }
 
-        public String getName() {
-            return name;
-        }
 
         public void printStats() {
-            System.out.printf("%s %s:\nHealth: %d/%d, Def: %s\n", type, name, curHealth, maxHealth, defenseR);
+            System.out.printf("%s %s:\nHealth: %d/%d, Def: %s\n", type, getName(), curHealth, maxHealth, defenseR);
         }
 
         public String getType() {
@@ -138,7 +145,7 @@ public class Main {
         }
     }
 
-    public static class Status extends Entity {
+    public static class Status extends Obj {
         private int duration;
 
         public void setDuration(int duration) {
@@ -396,13 +403,20 @@ public class Main {
         List<Hero> heroes = new ArrayList<>();
         List<Hero> enemies = new ArrayList<>();
         Scanner sc = new Scanner(System.in);
-        Game(){
+        FileWriter fw = new FileWriter("log.txt");
+
+        Game() throws IOException {
             while (true){
+                heroes = new ArrayList<>();
+                enemies = new ArrayList<>();
                 boolean end = false;
                 while (true){
                     System.out.println("Pick hero: (A)rcher, (W)izard, (F)ighter or (C)leric");
                     String input = sc.nextLine();
                     switch (input) {
+                        case "end this":
+                            end = true;
+                            break;
                         case "A":
                             heroes.add(new Archer("1"));
                             break;
@@ -418,6 +432,10 @@ public class Main {
                         default:
                             System.out.println("Invalid input");
                             continue;
+                    }
+                    fw.write(input+'\n');
+                    if (end){
+                        break;
                     }
                     heroes.get(0).startTurn();
                     break;
@@ -435,12 +453,24 @@ public class Main {
                     System.out.println("choose action, enter help to get help:");
                     String input = sc.nextLine();
                     String[] inputs = input.toLowerCase().split(" ");
+
                     Hero attacker = null;
                     Hero defender = null;
                     int attInd = 0;
                     if(inputs[0].equals("help")){
-                        System.out.println("help");
-                    } else if (inputs[0].equals("end this")){
+                        System.out.println("Typical command consists of 3 words:\n" +
+                                "1.Number of your hero starting at 1\n" +
+                                "2. Action:\n" +
+                                "at - normal attack\n" +
+                                "pat - poison attack of archer\n" +
+                                "mis - magic missile of wizard\n" +
+                                "heal - healing from cleric\n" +
+                                "bl - block\n" +
+                                "3. Target, also as a number starting at 1\n" +
+                                "Note, that block does not need a target\n"+
+                                "Also you can print stats by typing stats");
+                        continue;
+                    } else if (input.equals("end this")){
                         end = true;
                         break;
                     } else if(inputs[0].equals("stats")){
@@ -453,6 +483,10 @@ public class Main {
                         }
                         continue;
                     }else if(inputs[0].equals("1") || inputs[0].equals("2") || inputs[0].equals("3") || inputs[0].equals("4")){
+                        if (inputs.length<2){
+                            System.out.println("Invalid input");
+                            continue;
+                        }
                         try {
                             attInd = Integer.parseInt(inputs[0])-1;
                             attacker = heroes.get(attInd);
@@ -461,12 +495,21 @@ public class Main {
                                 System.out.println("Attacker already made an action");
                                 continue;
                             }
+                            if(attacker.getCurHealth()==0){
+                                attacker = null;
+                                System.out.println("Attacker died");
+                                continue;
+                            }
                         } catch (IndexOutOfBoundsException e) {
-                            System.out.println("Invalid attacker");
+                            System.out.println("Invalid character chosen");
                             continue;
                         }
                     }
                     if("at pat mis heal".contains(inputs[1])){
+                        if(inputs.length<3){
+                            System.out.println("No target");
+                            continue;
+                        }
                         if(Objects.equals(inputs[2], "1") || Objects.equals(inputs[2], "2") || Objects.equals(inputs[2], "3") || Objects.equals(inputs[2], "4")){
                             try {
                                 defender = enemies.get(Integer.parseInt(inputs[2])-1);
@@ -475,42 +518,71 @@ public class Main {
                                 continue;
                             }
                         }
-                        switch (inputs[1]) {
-                            case "at":
-                                attacker.attack(defender);
-                                break;
-                            case "mis":
-                                ((Wizard)attacker).magicMissile(defender);
-                                break;
-                            case "pat":
-                                ((Archer)attacker).poisonAttack(defender);
-                                break;
-                            case "heal":
-                                ((Cleric)attacker).heal(defender);
+                        try {
+                            switch (inputs[1]) {
+                                case "at":
+                                    attacker.attack(defender);
+                                    break;
+                                case "mis":
+                                    ((Wizard)attacker).magicMissile(defender);
+                                    break;
+                                case "pat":
+                                    ((Archer)attacker).poisonAttack(defender);
+                                    break;
+                                case "heal":
+                                    ((Cleric)attacker).heal(defender);
+                            }
+                        } catch (ClassCastException e){
+                            System.out.println("Character cant take such action");
+                            continue;
+                        } catch (NullPointerException e){
+                            System.out.println("Invalid choice of letters");
+                            continue;
                         }
-                    } else {
+
+                    } else if("bl".contains(inputs[1])) {
                         switch (inputs[1]) {
                             case "bl":
                                 attacker.block();
                                 break;
 
                         }
+                    } else {
+                        System.out.println("Invalid action chosen");
+                        continue;
                     }
                     actions.get(attInd).use();
+                    fw.write(input+"\n");
                     if(allDrained(actions)){
                         refillAllDrained(actions);
+                        boolean won = true;
                         for(Hero enemy: enemies){
-                            enemy.startTurn();
-                            enemy.attack(heroes.get(0));
+                            if (enemy.getCurHealth()>0){
+                                won = false;
+                                enemy.startTurn();
+                                enemy.attack(heroes.get(0));
+                            }
+                        }
+                        if(won){
+                            System.out.println("You won");
+                            break;
                         }
                         for(Hero hero: heroes){
                             hero.startTurn();
+                            if(hero.getCurHealth()==0){
+                                actions.get(attInd).use();
+                            }
+                        }
+                        if (allDrained(actions)){
+                            System.out.println("You died");
+                            break;
                         }
                         System.out.println("Next turn");
                     }
 
                 }
                 if(end){
+                    fw.close();
                     break;
                 }
             }
@@ -518,7 +590,7 @@ public class Main {
 
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         new Game();
     }
 }
