@@ -8,8 +8,9 @@ import static java.lang.Math.*;
 
 
 public class Main {
-    public static class Obj{
+    public static class Obj {
         private String name;
+
         public void setName(String name) {
             this.name = name;
         }
@@ -18,7 +19,8 @@ public class Main {
             return name;
         }
     }
-    public static class Entity extends Obj{
+
+    public static class Entity extends Obj {
 
         private String type;
         private int maxHealth = 10;
@@ -116,7 +118,6 @@ public class Main {
         public int getAttackR() {
             return attackR;
         }
-
 
 
         public void printStats() {
@@ -253,8 +254,16 @@ public class Main {
     }
 
     public static class Hero extends Entity {
+        private Action action = new Action();
         HashMap<String, Double> resists = new HashMap<String, Double>();
-        private int actionCnt = 1;
+
+        public void takeAction() {
+            action.use();
+        }
+
+        public boolean isReady() {
+            return action.isReady();
+        }
 
         public void attack(Entity target) {
             target.decreaseHealth(max(this.getAttackR() - target.getDefenseR(), 0));
@@ -281,7 +290,7 @@ public class Main {
                         decreaseHealth((int) round(max(t * getResists().get("poison"), 0)));
                         break;
                     case "stun":
-                        this.actionCnt = 0;
+                        action.use();
                         break;
                 }
             }
@@ -291,6 +300,7 @@ public class Main {
             setDefenseR(getDefense());
             setAttackR(getAttack());
             this.triggerStatuses();
+            action.refill();
         }
     }
 
@@ -371,34 +381,43 @@ public class Main {
             target.decreaseHealth(20);//ignores def
         }
     }
-    public static class Action{
+
+    public static class Action {
         private boolean action = true;
-        Action() {}
-        public void use(){
+
+        Action() {
+        }
+
+        public void use() {
             action = false;
         }
-        public boolean isReady(){
+
+        public boolean isReady() {
             return action;
         }
-        public void refill(){
+
+        public void refill() {
             action = true;
         }
     }
-    public static boolean allDrained(List<Action> actions) {
+
+    public static boolean allDrained(List<Hero> heros) {
         boolean allDrained = true;
-        for (Action action : actions) {
-            if (action.isReady()) {
+        for (Hero hero : heros) {
+            if (hero.isReady()) {
                 allDrained = false;
                 return allDrained;
             }
         }
         return allDrained;
     }
+
     public static void refillAllDrained(List<Action> actions) {
         for (Action action : actions) {
             action.refill();
         }
     }
+
     public static class Game {
         List<Hero> heroes = new ArrayList<>();
         List<Hero> enemies = new ArrayList<>();
@@ -406,11 +425,11 @@ public class Main {
         FileWriter fw = new FileWriter("log.txt");
 
         Game() throws IOException {
-            while (true){
+            while (true) {
                 heroes = new ArrayList<>();
                 enemies = new ArrayList<>();
                 boolean end = false;
-                while (true){
+                while (true) {
                     System.out.println("Pick hero: (A)rcher, (W)izard, (F)ighter or (C)leric");
                     String input = sc.nextLine();
                     switch (input) {
@@ -433,8 +452,8 @@ public class Main {
                             System.out.println("Invalid input");
                             continue;
                     }
-                    fw.write(input+'\n');
-                    if (end){
+                    fw.write(input + '\n');
+                    if (end) {
                         break;
                     }
                     heroes.get(0).startTurn();
@@ -444,12 +463,8 @@ public class Main {
                 for (Hero enemy : enemies) {
                     enemy.startTurn();
                 }
-                List<Action> actions = new ArrayList<>();
-                for (Hero hero : heroes) {
-                    actions.add(new Action());
-                }
 
-                while (true){
+                while (true) {
                     System.out.println("choose action, enter help to get help:");
                     String input = sc.nextLine();
                     String[] inputs = input.toLowerCase().split(" ");
@@ -457,7 +472,7 @@ public class Main {
                     Hero attacker = null;
                     Hero defender = null;
                     int attInd = 0;
-                    if(inputs[0].equals("help")){
+                    if (inputs[0].equals("help")) {
                         System.out.println("Typical command consists of 3 words:\n" +
                                 "1.Number of your hero starting at 1\n" +
                                 "2. Action:\n" +
@@ -467,35 +482,35 @@ public class Main {
                                 "heal - healing from cleric\n" +
                                 "bl - block\n" +
                                 "3. Target, also as a number starting at 1\n" +
-                                "Note, that block does not need a target\n"+
+                                "Note, that block does not need a target\n" +
                                 "Also you can print stats by typing stats");
                         continue;
-                    } else if (input.equals("end this")){
+                    } else if (input.equals("end this")) {
                         end = true;
                         break;
-                    } else if(inputs[0].equals("stats")){
-                        for(Hero hero : heroes){
+                    } else if (inputs[0].equals("stats")) {
+                        for (Hero hero : heroes) {
                             hero.printStats();
                         }
                         System.out.println("-------------");
-                        for (Hero hero : enemies){
+                        for (Hero hero : enemies) {
                             hero.printStats();
                         }
                         continue;
-                    }else if(inputs[0].equals("1") || inputs[0].equals("2") || inputs[0].equals("3") || inputs[0].equals("4")){
-                        if (inputs.length<2){
+                    } else if (inputs[0].equals("1") || inputs[0].equals("2") || inputs[0].equals("3") || inputs[0].equals("4")) {
+                        if (inputs.length < 2) {
                             System.out.println("Invalid input");
                             continue;
                         }
                         try {
-                            attInd = Integer.parseInt(inputs[0])-1;
+                            attInd = Integer.parseInt(inputs[0]) - 1;
                             attacker = heroes.get(attInd);
-                            if(!actions.get(attInd).isReady()){
+                            if (!heroes.get(attInd).isReady()) {
                                 attacker = null;
                                 System.out.println("Attacker already made an action");
                                 continue;
                             }
-                            if(attacker.getCurHealth()==0){
+                            if (attacker.getCurHealth() == 0) {
                                 attacker = null;
                                 System.out.println("Attacker died");
                                 continue;
@@ -504,86 +519,87 @@ public class Main {
                             System.out.println("Invalid character chosen");
                             continue;
                         }
-                    }
-                    if("at pat mis heal".contains(inputs[1])){
-                        if(inputs.length<3){
-                            System.out.println("No target");
-                            continue;
-                        }
-                        if(Objects.equals(inputs[2], "1") || Objects.equals(inputs[2], "2") || Objects.equals(inputs[2], "3") || Objects.equals(inputs[2], "4")){
-                            try {
-                                defender = enemies.get(Integer.parseInt(inputs[2])-1);
-                            } catch (IndexOutOfBoundsException e) {
-                                System.out.println("Invalid target");
+                        if ("at pat mis heal".contains(inputs[1])) {
+                            if (inputs.length < 3) {
+                                System.out.println("No target");
                                 continue;
                             }
-                        }
-                        try {
+                            if (Objects.equals(inputs[2], "1") || Objects.equals(inputs[2], "2") || Objects.equals(inputs[2], "3") || Objects.equals(inputs[2], "4")) {
+                                try {
+                                    defender = enemies.get(Integer.parseInt(inputs[2]) - 1);
+                                } catch (IndexOutOfBoundsException e) {
+                                    System.out.println("Invalid target");
+                                    continue;
+                                }
+                            }
+                            try {
+                                switch (inputs[1]) {
+                                    case "at":
+                                        attacker.attack(defender);
+                                        break;
+                                    case "mis":
+                                        ((Wizard) attacker).magicMissile(defender);
+                                        break;
+                                    case "pat":
+                                        ((Archer) attacker).poisonAttack(defender);
+                                        break;
+                                    case "heal":
+                                        ((Cleric) attacker).heal(defender);
+                                        break;
+                                }
+                            } catch (ClassCastException e) {
+                                System.out.println("Character cant take such action");
+                                continue;
+                            } catch (NullPointerException e) {
+                                System.out.println("Invalid choice of letters");
+                                continue;
+                            }
+                        } else if ("bl".contains(inputs[1])) {
                             switch (inputs[1]) {
-                                case "at":
-                                    attacker.attack(defender);
+                                case "bl":
+                                    attacker.block();
                                     break;
-                                case "mis":
-                                    ((Wizard)attacker).magicMissile(defender);
-                                    break;
-                                case "pat":
-                                    ((Archer)attacker).poisonAttack(defender);
-                                    break;
-                                case "heal":
-                                    ((Cleric)attacker).heal(defender);
+
                             }
-                        } catch (ClassCastException e){
-                            System.out.println("Character cant take such action");
-                            continue;
-                        } catch (NullPointerException e){
-                            System.out.println("Invalid choice of letters");
+                        } else {
+                            System.out.println("Invalid action chosen");
                             continue;
                         }
-
-                    } else if("bl".contains(inputs[1])) {
-                        switch (inputs[1]) {
-                            case "bl":
-                                attacker.block();
+                        heroes.get(attInd).takeAction();
+                        fw.write(input + "\n");
+                        if (allDrained(heroes)) {
+                            boolean won = true;
+                            for (Hero enemy : enemies) {
+                                if (enemy.getCurHealth() > 0) {
+                                    won = false;
+                                    enemy.startTurn();
+                                    enemy.attack(heroes.get(0));
+                                }
+                            }
+                            if (won) {
+                                System.out.println("You won");
                                 break;
-
+                            }
+                            for (Hero hero : heroes) {
+                                hero.startTurn();
+                                if (hero.getCurHealth() == 0) {
+                                    heroes.get(attInd).takeAction();
+                                }
+                            }
+                            if (allDrained(heroes)) {
+                                System.out.println("You died");
+                                break;
+                            }
+                            System.out.println("Next turn");
                         }
+
                     } else {
-                        System.out.println("Invalid action chosen");
-                        continue;
+                        System.out.println("Invalid command: "+inputs[0]+" not recognised");
                     }
-                    actions.get(attInd).use();
-                    fw.write(input+"\n");
-                    if(allDrained(actions)){
-                        refillAllDrained(actions);
-                        boolean won = true;
-                        for(Hero enemy: enemies){
-                            if (enemy.getCurHealth()>0){
-                                won = false;
-                                enemy.startTurn();
-                                enemy.attack(heroes.get(0));
-                            }
-                        }
-                        if(won){
-                            System.out.println("You won");
-                            break;
-                        }
-                        for(Hero hero: heroes){
-                            hero.startTurn();
-                            if(hero.getCurHealth()==0){
-                                actions.get(attInd).use();
-                            }
-                        }
-                        if (allDrained(actions)){
-                            System.out.println("You died");
-                            break;
-                        }
-                        System.out.println("Next turn");
+                    if (end) {
+                        fw.close();
+                        break;
                     }
-
-                }
-                if(end){
-                    fw.close();
-                    break;
                 }
             }
         }
