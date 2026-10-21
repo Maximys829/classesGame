@@ -423,17 +423,20 @@ public class Main {
         List<Hero> enemies = new ArrayList<>();
         Scanner sc = new Scanner(System.in);
         FileWriter fw = new FileWriter("log.txt");
-
+        final String endL = "end this";
         Game() throws IOException {
+            boolean end = false;
             while (true) {
                 heroes = new ArrayList<>();
                 enemies = new ArrayList<>();
-                boolean end = false;
+                if(end){
+                    break;
+                }
                 while (true) {
                     System.out.println("Pick hero: (A)rcher, (W)izard, (F)ighter or (C)leric");
                     String input = sc.nextLine();
                     switch (input) {
-                        case "end this":
+                        case endL:
                             end = true;
                             break;
                         case "A":
@@ -457,6 +460,9 @@ public class Main {
                         break;
                     }
                     heroes.get(0).startTurn();
+                    break;
+                }
+                if(end){
                     break;
                 }
                 enemies.add(new Fighter("1"));
@@ -485,7 +491,7 @@ public class Main {
                                 "Note, that block does not need a target\n" +
                                 "Also you can print stats by typing stats");
                         continue;
-                    } else if (input.equals("end this")) {
+                    } else if (input.equals(endL)) {
                         end = true;
                         break;
                     } else if (inputs[0].equals("stats")) {
