@@ -8,144 +8,6 @@ import static java.lang.Math.*;
 
 
 public class Main {
-    public static class Obj {
-        private String name;
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public String getName() {
-            return name;
-        }
-    }
-
-    public static class Entity extends Obj {
-
-        private String type;
-        private int maxHealth = 10;
-        private int curHealth = maxHealth;
-        private int attack = 0;
-        private int attackR = 0;
-        private int defense = 0;
-        private int defenseR = 0;
-        private int initiative = 0;
-        private List<Status> statuses = new ArrayList() {
-        };
-        private HashMap<String, Double> resists = new HashMap<>();
-
-        public void setMaxHealth(int maxHealth) {
-            this.maxHealth = maxHealth;
-        }
-
-        public void setMaxHealthAndHeal(int maxHealth) {
-            this.maxHealth = maxHealth;
-            this.curHealth = maxHealth;
-        }
-
-        public int getMaxHealth() {
-            return maxHealth;
-        }
-
-        public void decreaseHealth(int amount) {
-            curHealth -= amount;
-            if (curHealth <= 0) {
-                curHealth = 0;
-            }
-        }
-
-        public void increaseHealth(int amount) {
-            curHealth += amount;
-            if (curHealth > maxHealth) {
-                curHealth = maxHealth;
-            }
-        }
-
-        public int getCurHealth() {
-            return curHealth;
-        }
-
-        public void setAttack(int attack) {
-            this.attack = attack;
-        }
-
-        public int getAttack() {
-            return attack;
-        }
-
-        public void setDefense(int defense) {
-            this.defense = defense;
-        }
-
-        public int getDefense() {
-            return defense;
-        }
-
-        public void setInitiative(int initiative) {
-            this.initiative = initiative;
-        }
-
-        public int getInitiative() {
-            return initiative;
-        }
-
-        public void setStatus(Status status) {
-            if (!statuses.contains(status)) {
-                this.statuses.add(status);
-            } else {
-                statuses.get(statuses.indexOf(status)).add(status);
-
-            }
-
-        }
-
-        public List<Status> getStatuses() {
-            return statuses;
-        }
-
-        public void setDefenseR(int defenseR) {
-            this.defenseR = defenseR;
-        }
-
-        public int getDefenseR() {
-            return defenseR;
-        }
-
-        public void setAttackR(int attackR) {
-            this.attackR = attackR;
-        }
-
-        public int getAttackR() {
-            return attackR;
-        }
-
-
-        public void printStats() {
-            System.out.printf("%s %s:\nHealth: %d/%d, Def: %s\n", type, getName(), curHealth, maxHealth, defenseR);
-        }
-
-        public String getType() {
-            return type;
-        }
-
-        public void setType(String type) {
-            this.type = type;
-        }
-
-        public HashMap<String, Double> getResists() {
-            return resists;
-        }
-
-        public void setResists(HashMap<String, Double> resists) {
-            this.resists = resists;
-        }
-
-        public void fillResists(List<Double> resists) {
-            this.resists.put("poison", resists.get(0));
-
-        }
-    }
-
     public static class Status extends Obj {
         private int duration;
 
@@ -182,7 +44,6 @@ public class Main {
             return false;
         }
     }
-
     public static class Block extends Status {
         private int ddef;
 
@@ -253,135 +114,6 @@ public class Main {
         }
     }
 
-    public static class Hero extends Entity {
-        private Action action = new Action();
-        HashMap<String, Double> resists = new HashMap<String, Double>();
-
-        public void takeAction() {
-            action.use();
-        }
-
-        public boolean isReady() {
-            return action.isReady();
-        }
-
-        public void attack(Entity target) {
-            target.decreaseHealth(max(this.getAttackR() - target.getDefenseR(), 0));
-        }
-
-        public void block() {
-            int n = 5;
-            this.setStatus(new Block(3 - 1, n));
-            setDefenseR(getDefenseR() + n);
-        }
-
-        public void triggerStatuses() {
-            for (Status s : this.getStatuses()) {
-                int t = s.tick();
-                if (t == -1) {
-                    getStatuses().remove(s);
-                    return;
-                }
-                switch (s.getName()) {
-                    case "block":
-                        setDefenseR(getDefenseR() + t);
-                        break;
-                    case "poison":
-                        decreaseHealth((int) round(max(t * getResists().get("poison"), 0)));
-                        break;
-                    case "stun":
-                        action.use();
-                        break;
-                }
-            }
-        }
-
-        public void startTurn() {
-            setDefenseR(getDefense());
-            setAttackR(getAttack());
-            this.triggerStatuses();
-            action.refill();
-        }
-    }
-
-    public static class Archer extends Hero {
-        Archer(String name) {
-            List<Double> list = List.of(0.8, 1.);
-            this.fillResists(list);
-            this.setMaxHealthAndHeal(90);
-            this.setAttack(20);
-            this.setDefense(0);
-            this.setInitiative(5);
-            this.setName(name);
-            this.setType("Archer");
-        }
-
-        public void poisonAttack(Entity target) {
-            target.setStatus(new Poison(8 + 1));
-        }
-    }
-
-    public static class Cleric extends Hero {
-        private int healAmount;
-
-        Cleric(String name) {
-            this.healAmount = 10;
-            List<Double> list = List.of(1., 1.);
-            this.fillResists(list);
-            this.setMaxHealthAndHeal(100);
-            this.setAttack(15);
-            this.setDefense(0);
-            this.setInitiative(0);
-            this.setName(name);
-            this.setType("Cleric");
-        }
-
-        public void heal(Entity target) {
-            target.increaseHealth(healAmount);
-        }
-    }
-
-    public static class Fighter extends Hero {
-        Fighter(String name) {
-            List<Double> list = List.of(0.9, 1.);
-            this.fillResists(list);
-            this.setMaxHealthAndHeal(120);
-            this.setAttack(25);
-            this.setDefense(5);
-            this.setInitiative(3);
-            this.setName(name);
-            this.setType("Fighter");
-        }
-
-        @Override
-        public void block() {
-            int n = 10;
-            this.setStatus(new Block(3 - 1, n));
-            setDefenseR(getDefenseR() + n);
-        }
-
-        public void stun(Entity target) {
-            target.setStatus(new Stun(1));
-        }
-    }
-
-    public static class Wizard extends Hero {
-        Wizard(String name) {
-            List<Double> list = List.of(1.2, 1.);
-            this.fillResists(list);
-            this.setMaxHealthAndHeal(80);
-            this.setAttack(15);
-            this.setDefense(0);
-            this.setInitiative(-3);
-            this.setName(name);
-            this.setType("Wizard");
-        }
-
-        public void magicMissile(Entity target) {
-            target.decreaseHealth(20);//ignores def
-        }
-    }
-
     public static class Action {
         private boolean action = true;
 
@@ -412,24 +144,24 @@ public class Main {
         return allDrained;
     }
 
-    public static void refillAllDrained(List<Action> actions) {
-        for (Action action : actions) {
-            action.refill();
-        }
-    }
-
     public static class Game {
         List<Hero> heroes = new ArrayList<>();
         List<Hero> enemies = new ArrayList<>();
         Scanner sc = new Scanner(System.in);
         FileWriter fw = new FileWriter("log.txt");
         final String endL = "end this";
-        Game() throws IOException {
+
+        public Game() throws IOException {
+
+        }
+
+        public void playGame() throws IOException {
             boolean end = false;
             while (true) {
                 heroes = new ArrayList<>();
                 enemies = new ArrayList<>();
-                if(end){
+                if (end) {
+                    fw.close();
                     break;
                 }
                 while (true) {
@@ -457,12 +189,15 @@ public class Main {
                     }
                     fw.write(input + '\n');
                     if (end) {
+                        fw.close();
                         break;
                     }
                     heroes.get(0).startTurn();
                     break;
                 }
-                if(end){
+
+                if (end) {
+                    fw.close();
                     break;
                 }
                 enemies.add(new Fighter("1"));
@@ -471,7 +206,7 @@ public class Main {
                 }
 
                 while (true) {
-                    System.out.println("choose action, enter help to get help:");
+                    System.out.println("write a command, enter help to get help:");
                     String input = sc.nextLine();
                     String[] inputs = input.toLowerCase().split(" ");
 
@@ -489,7 +224,7 @@ public class Main {
                                 "bl - block\n" +
                                 "3. Target, also as a number starting at 1\n" +
                                 "Note, that block does not need a target\n" +
-                                "Also you can print stats by typing stats");
+                                "Also you can print stats by typing stats\n");
                         continue;
                     } else if (input.equals(endL)) {
                         end = true;
@@ -537,6 +272,9 @@ public class Main {
                                     System.out.println("Invalid target");
                                     continue;
                                 }
+                            } else {
+                                System.out.println("Wrong target");
+                                continue;
                             }
                             try {
                                 switch (inputs[1]) {
@@ -600,7 +338,7 @@ public class Main {
                         }
 
                     } else {
-                        System.out.println("Invalid command: "+inputs[0]+" not recognised");
+                        System.out.println("Invalid command: " + inputs[0] + " not recognised");
                     }
                     if (end) {
                         fw.close();
@@ -613,6 +351,7 @@ public class Main {
     }
 
     public static void main(String[] args) throws IOException {
-        new Game();
+        Game game = new Game();
+        game.playGame();
     }
 }
